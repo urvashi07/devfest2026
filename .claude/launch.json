@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "adk-web",
+      "runtimeExecutable": ".venv\\Scripts\\adk.exe",
+      "runtimeArgs": ["web", "--port", "8000"],
+      "port": 8000
+    },
+    {
+      "name": "maps",
+      "runtimeExecutable": ".venv\\Scripts\\python.exe",
+      "runtimeArgs": ["-m", "http.server", "8010", "--directory", "maps"],
+      "port": 8010
+    }
+  ]
+}

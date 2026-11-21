@@ -16,8 +16,8 @@ Given a substance and an incident location, PlumeScout:
 
 | Component | Model | Role |
 |---|---|---|
-| `plume_scout` (root agent) | `gemini-2.5-flash-lite` | Runs the four-step workflow and writes the briefing. |
-| `emergency_fallback_agent` | `gemini-2.5-flash` | Takes over for unknown substances, failed lookups, or requests to bypass safety rules. Recommends maximum PPE, a 500 m isolation zone, and escalation to TUIS / GESTIS / Fachberater Chemie. |
+| `plume_scout` (root agent) | `gemini-3.5-flash-lite` | Runs the four-step workflow and writes the briefing. |
+| `emergency_fallback_agent` | `gemini-3.5-flash-lite` | Takes over for unknown substances, failed lookups, or requests to bypass safety rules. Recommends maximum PPE, a 500 m isolation zone, and escalation to TUIS / GESTIS / Fachberater Chemie. |
 
 **Safety design**
 

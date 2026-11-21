@@ -13,3 +13,6 @@ audit_log.jsonl
 # Python
 __pycache__/
 *.pyc
+
+# Generated plume maps
+maps/
