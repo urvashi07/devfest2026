@@ -1,0 +1,12 @@
+# Project folders
+data/
+_old/
+.adk/
+
+# Secrets and local environment
+.env
+.venv/
+
+# Python
+__pycache__/
+*.pyc
