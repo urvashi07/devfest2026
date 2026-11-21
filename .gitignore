@@ -16,3 +16,7 @@ __pycache__/
 
 # Generated plume maps
 maps/
+
+# Recorded demo videos
+demo/*.mp4
+demo/*.webm

@@ -368,7 +368,7 @@ _MAP_TEMPLATE = """<!doctype html>
   .sw { width: 14px; height: 14px; border-radius: 3px; flex: none; }
   .compass { width: 90px; height: 90px; display: block; margin: 4px auto 0; }
   .warn { color: #b00020; font-weight: 600; margin-top: 6px; }
-  .toggle { position: absolute; z-index: 1000; left: 54px; top: 10px; display: flex;
+  .toggle { position: absolute; z-index: 1002; left: 54px; top: 10px; display: flex; flex-wrap: wrap; max-width: calc(100% - 70px);
             border-radius: 8px; overflow: hidden; box-shadow: 0 1px 6px rgba(0,0,0,.3); }
   .toggle button { font: 600 14px system-ui, sans-serif; padding: 8px 14px; border: 0;
                    background: #fff; color: #333; cursor: pointer; }
@@ -378,6 +378,34 @@ _MAP_TEMPLATE = """<!doctype html>
   .hint3d { display: none; position: absolute; z-index: 1000; left: 10px; bottom: 28px; background: rgba(255,255,255,.92);
             padding: 6px 10px; border-radius: 6px; font-size: 12px; color: #444; box-shadow: 0 1px 4px rgba(0,0,0,.25); }
   body.mode3d .hint3d { display: block; }
+  /* Labels pointing at the key features */
+  .leaflet-tooltip.lbl { font: 600 12px system-ui, sans-serif; padding: 2px 7px; border-radius: 5px;
+                         box-shadow: 0 1px 4px rgba(0,0,0,.35); border: 0; }
+  .leaflet-tooltip.lbl::before { display: none; }
+  body.nolabels .leaflet-tooltip.lbl, body.nolabels .pl { display: none; }
+  .pin { position: relative; }
+  .pl { position: absolute; left: calc(100% + 6px); top: 50%; transform: translateY(-50%); white-space: nowrap;
+        background: #fff; color: #222; padding: 2px 7px; border-radius: 5px; font: 600 12px system-ui, sans-serif;
+        box-shadow: 0 1px 4px rgba(0,0,0,.35); pointer-events: none; }
+  /* Tour: pulsing ring on the current target + caption bar */
+  .pulse { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%;
+           border: 4px solid #ffeb3b; box-shadow: 0 0 0 2px #222; animation: pulse 1.4s ease-out infinite; pointer-events: none; }
+  .pulse3d { position: relative; width: 22px; height: 22px; border-radius: 50%; border: 4px solid #ffeb3b;
+             box-shadow: 0 0 0 2px #222; animation: pulse 1.4s ease-out infinite; pointer-events: none; }
+  @keyframes pulse { 0% { transform: scale(.6); opacity: 1; } 100% { transform: scale(3.2); opacity: 0; } }
+  .caption { display: none; position: absolute; z-index: 1001; left: 50%; bottom: 30px; transform: translateX(-50%);
+             width: min(620px, calc(100% - 32px)); box-sizing: border-box; background: rgba(17,24,39,.92); color: #fff;
+             padding: 12px 16px; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,.4); }
+  body.touring .caption { display: block; }
+  @media (max-width: 900px) { body.touring #legend { display: none; } }
+  .caption .step { font-size: 12px; color: #ffeb3b; font-weight: 700; letter-spacing: .04em; }
+  .caption .title { font-size: 18px; font-weight: 700; margin: 2px 0 4px; }
+  .caption .text { font-size: 15px; line-height: 1.45; }
+  .caption .ctl { display: flex; gap: 6px; margin-top: 8px; }
+  .caption .ctl button { font: 600 13px system-ui, sans-serif; border: 0; border-radius: 6px; padding: 5px 10px;
+                         background: #374151; color: #fff; cursor: pointer; }
+  .caption .bar { height: 3px; background: #374151; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .caption .bar div { height: 100%; width: 0; background: #ffeb3b; }
   .pin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #222; cursor: pointer; }
   @media (max-width: 600px) { .panel { max-width: 200px; font-size: 12px; } .compass { width: 60px; height: 60px; } }
 </style>
@@ -385,7 +413,8 @@ _MAP_TEMPLATE = """<!doctype html>
 <body>
 <div id="map"></div>
 <div id="map3d"></div>
-<div class="toggle"><button id="b2d" class="on">2D</button><button id="b3d">3D</button><button id="bOverview" class="cam">Overview</button><button id="bClose" class="cam">Close-up</button></div>
+<div class="toggle"><button id="b2d" class="on">2D</button><button id="b3d">3D</button><button id="bOverview" class="cam">Overview</button><button id="bClose" class="cam">Close-up</button><button id="bLabels" class="on">Labels</button><button id="bTour">&#9654; Tour</button></div>
+<div id="caption" class="caption"><div class="step"></div><div class="title"></div><div class="text"></div><div class="bar"><div></div></div><div class="ctl"><button id="tPrev">&#9664; Back</button><button id="tPause">Pause</button><button id="tNext">Next &#9654;</button><button id="tStop">End tour</button></div></div>
 <div class="hint3d">3D: right-click or Ctrl + drag to rotate and tilt · Buildings and terrain from OpenStreetMap</div>
 <div id="legend" class="panel"></div>
 <script>
@@ -416,10 +445,24 @@ dot([D.staging.lat, D.staging.lon], '#2e7d32', 9).bindPopup(stagingText);
 D.checkpoints.forEach(mp => dot([mp.lat, mp.lon], '#ff9800', 8).bindPopup(mpText(mp)));
 D.sites.forEach(s => dot([s.lat, s.lon], siteColor(s), s.affected ? 8 : 6).bindPopup(siteText(s)));
 map.fitBounds(plume.getBounds().extend(L.latLng(D.staging.lat, D.staging.lon)).pad(0.15));
+const allBounds = () => plume.getBounds().extend(L.latLng(D.staging.lat, D.staging.lon)).pad(0.15);
+const mpShort = mp => mp.id.split(' ')[0];
+const affected = D.sites.filter(s => s.affected);
+function label(latlng, text, dir, color) {
+  return L.tooltip({permanent: true, direction: dir || 'right', className: 'lbl', offset: dir === 'left' ? [-12, 0] : [12, 0]})
+    .setLatLng(latlng).setContent(color ? '<span style="color:' + color + '">' + text + '</span>' : text).addTo(map);
+}
+label(D.incident, 'Release point', 'left', '#b71c1c');
+label([D.staging.lat, D.staging.lon], 'Staging area (upwind)', 'left', '#2e7d32');
+D.checkpoints.forEach(mp => label([mp.lat, mp.lon], mpShort(mp), 'right', '#e65100'));
+affected.forEach(s => label([s.lat, s.lon], '\u26a0 ' + s.name, 'right', prioColor[s.priority]));
+label(D.wind_end, 'Plume heading ' + D.downwind + '\u00b0', 'right', '#1565c0');
+label(D.isolation_ring[0], 'Isolation zone ' + D.isolation_m + ' m', 'top', '#b71c1c');
 
 // ---------- 3D (MapLibre: OSM buildings + terrain) ----------
 const ll = p => [p[1], p[0]];  // [lat, lon] -> [lon, lat]
 let map3d = null;
+let ready3d = null;
 function init3d() {
   map3d = new maplibregl.Map({
     container: 'map3d',
@@ -432,6 +475,7 @@ function init3d() {
     antialias: true,
   });
   map3d.addControl(new maplibregl.NavigationControl({visualizePitch: true}), 'top-left');
+  ready3d = new Promise(resolve => map3d.once('idle', resolve));
   map3d.on('load', () => {
     map3d.addSource('dem', {
       type: 'raster-dem', encoding: 'terrarium', tileSize: 256, maxzoom: 15,
@@ -476,18 +520,19 @@ function init3d() {
                     paint: {'fill-color': '#1565c0'}});
   });
 
-  function pin(latlng, color, html, size) {
+  function pin(latlng, color, html, size, text) {
     const el = document.createElement('div');
     el.className = 'pin';
     el.style.background = color;
     if (size) { el.style.width = el.style.height = size + 'px'; }
+    if (text) { const t = document.createElement('div'); t.className = 'pl'; t.textContent = text; t.style.color = color; el.appendChild(t); }
     new maplibregl.Marker({element: el}).setLngLat(ll(latlng))
       .setPopup(new maplibregl.Popup({offset: 12}).setHTML(html)).addTo(map3d);
   }
-  pin(D.incident, '#b71c1c', incidentText, 20);
-  pin([D.staging.lat, D.staging.lon], '#2e7d32', stagingText, 18);
-  D.checkpoints.forEach(mp => pin([mp.lat, mp.lon], '#ff9800', mpText(mp)));
-  D.sites.forEach(s => pin([s.lat, s.lon], siteColor(s), siteText(s), s.affected ? 16 : 12));
+  pin(D.incident, '#b71c1c', incidentText, 20, 'Release point');
+  pin([D.staging.lat, D.staging.lon], '#2e7d32', stagingText, 18, 'Staging area (upwind)');
+  D.checkpoints.forEach(mp => pin([mp.lat, mp.lon], '#ff9800', mpText(mp), null, mpShort(mp)));
+  D.sites.forEach(s => pin([s.lat, s.lon], siteColor(s), siteText(s), s.affected ? 16 : 12, s.affected ? '\u26a0 ' + s.name : null));
 }
 
 function setMode(is3d) {
@@ -528,6 +573,127 @@ document.getElementById('legend').innerHTML =
   '<div class="warn">Recommendation only – requires Incident Commander approval.</div>' +
   '<div style="color:#666;font-size:12px">Generated: ' + D.generated + (D.wind_note ? '<br>' + D.wind_note : '') + '</div>';
 
+
+// ---------- Labels toggle ----------
+document.getElementById('bLabels').onclick = () => {
+  const off = document.body.classList.toggle('nolabels');
+  document.getElementById('bLabels').classList.toggle('on', !off);
+};
+
+// ---------- Guided tour: flies to each important area and explains it ----------
+const steps = [
+  {title: 'Situation', mode: '2d', view: 'all', target: D.incident,
+   text: D.substance + ' release. Wind from ' + D.wind_from + '\u00b0 (' + D.wind_dir_text + ') at ' + D.wind_speed +
+         ' km/h, so the gas drifts towards ' + D.downwind + '\u00b0.'},
+  {title: 'Release point and isolation zone', mode: '2d', center: D.incident, zoom: 15, target: D.incident,
+   text: 'The release point, with a ' + D.isolation_m + ' m isolation zone (dashed circle) around it.'},
+  {title: 'Area at risk', mode: '2d', view: 'cone', target: D.wind_end,
+   text: 'The red cone is the downwind area at risk: \u00b1' + D.half_angle + '\u00b0 around the wind direction, up to ' + D.max_km + ' km.'},
+  {title: 'Staging area', mode: '2d', center: [D.staging.lat, D.staging.lon], zoom: 15, target: [D.staging.lat, D.staging.lon],
+   text: 'Crews assemble ' + D.isolation_m + ' m upwind, outside the plume.'},
+  {title: 'Measurement points', mode: '2d', view: 'mps', target: [D.checkpoints[1].lat, D.checkpoints[1].lon],
+   text: 'MP-1 (500 m), MP-2 (1.5 km) and MP-3 (3 km) lie on the plume axis, where the measurement unit confirms the gas.'},
+].concat(affected.length ? affected.map(s => ({
+  title: 'Sensitive site in the plume', mode: '2d', center: [s.lat, s.lon], zoom: 15, target: [s.lat, s.lon],
+  text: s.name + ', ' + s.distance_km + ' km downwind (priority ' + s.priority + ').'})) : [{
+  title: 'Sensitive sites', mode: '2d', view: 'cone', target: D.wind_end,
+  text: 'None of the listed hospitals or transport hubs is inside the cone.'}]
+).concat([
+  {title: '3D: buildings in the plume path', mode: '3d', cam: 'close', target: D.incident, dur: 9000,
+   text: 'The 3D view looks along the wind direction, showing the buildings and terrain around the release point.'},
+  {title: '3D: plume overview', mode: '3d', cam: 'overview', rotate: true, target: D.wind_end, dur: 10000,
+   text: 'Looking downwind over the whole area at risk.'},
+  {title: 'Decision', mode: '2d', view: 'all', target: D.incident,
+   text: 'All points are recommendations. The Incident Commander (Einsatzleiter) approves them before deployment.'},
+]);
+
+let tourIdx = -1, tourTimer = null, tourPaused = false, pulse2d = null, pulse3d = null, barAnim = null;
+const STEP_MS = 7000;
+
+function showPulse(step) {
+  if (pulse2d) { map.removeLayer(pulse2d); pulse2d = null; }
+  if (pulse3d) { pulse3d.remove(); pulse3d = null; }
+  if (step.mode === '2d') {
+    pulse2d = L.marker(step.target, {icon: L.divIcon({className: '', html: '<div class="pulse"></div>', iconSize: [0, 0]}),
+                                     interactive: false, zIndexOffset: 1000}).addTo(map);
+  } else if (map3d) {
+    const el = document.createElement('div'); el.className = 'pulse3d';
+    pulse3d = new maplibregl.Marker({element: el}).setLngLat(ll(step.target)).addTo(map3d);
+  }
+}
+
+function move2d(step) {
+  const opts = {duration: 1.6};
+  if (step.view === 'all') map.flyToBounds(allBounds(), opts);
+  else if (step.view === 'cone') map.flyToBounds(plume.getBounds().pad(0.1), opts);
+  else if (step.view === 'mps') map.flyToBounds(L.latLngBounds(D.checkpoints.map(m => [m.lat, m.lon]).concat([D.incident])).pad(0.35), opts);
+  else map.flyTo(step.center, step.zoom, opts);
+}
+
+async function move3d(step) {
+  await ready3d;
+  const v = step.cam === 'close' ? views.close() : views.overview();
+  map3d.flyTo({...v, duration: 2500});
+  if (step.rotate) {
+    map3d.once('moveend', () => {
+      if (tourIdx >= 0 && steps[tourIdx] === step) map3d.easeTo({bearing: D.downwind + 50, duration: 7000, easing: t => t});
+    });
+  }
+}
+
+function runStep(i) {
+  clearTimeout(tourTimer);
+  tourIdx = (i + steps.length) % steps.length;
+  const step = steps[tourIdx];
+  const cap = document.getElementById('caption');
+  cap.querySelector('.step').textContent = 'STEP ' + (tourIdx + 1) + ' OF ' + steps.length;
+  cap.querySelector('.title').textContent = step.title;
+  cap.querySelector('.text').textContent = step.text;
+  setMode(step.mode === '3d');
+  if (step.mode === '3d') { move3d(step).then(() => showPulse(step)); } else { move2d(step); showPulse(step); }
+  const ms = step.dur || STEP_MS;
+  const bar = cap.querySelector('.bar div');
+  if (barAnim) barAnim.cancel();
+  barAnim = bar.animate([{width: '0%'}, {width: '100%'}], {duration: ms, easing: 'linear', fill: 'forwards'});
+  if (tourPaused) barAnim.pause();
+  else tourTimer = setTimeout(() => { if (tourIdx < steps.length - 1) runStep(tourIdx + 1); else stopTour(); }, ms);
+}
+
+function prewarm3d() {
+  // Load the 3D map (and the close-up's building tiles) in the background while the 2D steps play
+  if (!map3d) init3d();
+  ready3d.then(() => { if (!document.body.classList.contains('mode3d')) map3d.jumpTo(views.close()); });
+}
+
+function startTour() {
+  prewarm3d();
+  document.body.classList.add('touring');
+  document.getElementById('bTour').classList.add('on');
+  tourPaused = false;
+  document.getElementById('tPause').textContent = 'Pause';
+  runStep(0);
+}
+function stopTour() {
+  clearTimeout(tourTimer);
+  if (barAnim) barAnim.cancel();
+  tourIdx = -1;
+  document.body.classList.remove('touring');
+  document.getElementById('bTour').classList.remove('on');
+  if (pulse2d) { map.removeLayer(pulse2d); pulse2d = null; }
+  if (pulse3d) { pulse3d.remove(); pulse3d = null; }
+}
+document.getElementById('bTour').onclick = () => (tourIdx >= 0 ? stopTour() : startTour());
+document.getElementById('tStop').onclick = stopTour;
+document.getElementById('tNext').onclick = () => runStep(tourIdx + 1);
+document.getElementById('tPrev').onclick = () => runStep(tourIdx - 1);
+document.getElementById('tPause').onclick = () => {
+  tourPaused = !tourPaused;
+  document.getElementById('tPause').textContent = tourPaused ? 'Play' : 'Pause';
+  if (tourPaused) { clearTimeout(tourTimer); if (barAnim) barAnim.pause(); }
+  else runStep(tourIdx);
+};
+
+if (location.hash === '#tour') setTimeout(startTour, 1500);
 if (location.hash === '#3d') setMode(true);
 </script>
 </body>
