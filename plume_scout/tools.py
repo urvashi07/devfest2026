@@ -24,34 +24,43 @@ LANUK_DEFAULT_SCOPE = "31e18b8ba18a0400"
 # Default chapter: k14 "Unfälle / Freisetzung" (accident & release measures, incl. detector thresholds)
 LANUK_DEFAULT_KAPITEL = "k14"
 
-# Substance names / UN numbers -> LANUK IGS_NR, verified against the IGS-Public CAS search (11/2026).
-# Operators can also pass a 6-digit IGS_NR directly (e.g., '101391').
-# Keys are matched longest-first, so "chlorwasserstoff" wins over "chlor".
+# Demo substance set: four airborne hazards, LANUK IGS_NR verified via the IGS-Public CAS search (11/2026).
+# Anything else is treated as unknown and handed to the fallback agent.
+IGS_NAMES = {
+    "101767": "Carbon monoxide (Kohlenmonoxid)",
+    "101391": "Chlorine (Chlor)",
+    "111171": "Ammonia (Ammoniak)",
+    "111170": "Hydrogen chloride (Chlorwasserstoff)",
+}
+
+# Names / UN numbers -> IGS_NR. Matched longest-first, so "chlorwasserstoff" wins over "chlor".
 IGS_LOOKUP = {
-    # Chlorine – CAS 7782-50-5, UN 1017
+    # Carbon monoxide – CAS 630-08-0, UN 1016. Main toxic gas in fire smoke.
+    "carbon monoxide": "101767",
+    "kohlenmonoxid": "101767",
+    "1016": "101767",
+    # Chlorine – CAS 7782-50-5, UN 1017. Swimming pools, water treatment, industry.
     "chlorine": "101391",
+    "chlorgas": "101391",
     "chlor": "101391",
     "1017": "101391",
-    # Ammonia – CAS 7664-41-7, UN 1005
+    # Ammonia – CAS 7664-41-7, UN 1005. Refrigeration plants, agriculture.
     "ammonia": "111171",
     "ammoniak": "111171",
     "1005": "111171",
-    # Hydrochloric acid (solution) – CAS 7647-01-0, UN 1789
-    "hydrochloric acid": "102191",
-    "hydrochloric": "102191",
-    "salzsäure": "102191",
-    "1789": "102191",
-    # Hydrogen chloride (gas) – CAS 7647-01-0, UN 1050
+    # Hydrogen chloride – CAS 7647-01-0, UN 1050. Released when PVC burns.
     "hydrogen chloride": "111170",
     "chlorwasserstoff": "111170",
+    "hydrochloric": "111170",
+    "salzsäure": "111170",
+    "pvc": "111170",
     "1050": "111170",
 }
-IGS_NAMES = {
-    "101391": "Chlorine (Chlor)",
-    "111171": "Ammonia (Ammoniak)",
-    "102191": "Hydrochloric acid (Salzsäure)",
-    "111170": "Hydrogen chloride (Chlorwasserstoff)",
-}
+
+# Generic fire terms -> carbon monoxide. Only checked when no specific substance matched,
+# so "PVC fire" still resolves to hydrogen chloride.
+FIRE_SMOKE_ALIASES = ("fire smoke", "smoke", "fire", "brandrauch", "rauch", "brand")
+FIRE_SMOKE_IGS_NR = "101767"
 
 # Local Münster reference points for deterministic downwind cone checks
 MUENSTER_SITES = [
@@ -142,20 +151,23 @@ def fetch_lanuk_stoffinfo(
     LANUK NRW IGS public database (igsvtu.lanuk.nrw.de). The source text is German.
 
     Args:
-        material_or_igs_nr: Substance name, UN number, or LANUK IGS_NR (e.g., 'Chlorine', 'UN 1017', '101391').
+        material_or_igs_nr: Substance name, UN number, or LANUK IGS_NR. Supported: carbon monoxide
+            (also 'fire' / 'smoke'), chlorine, ammonia, hydrogen chloride (also 'PVC fire').
         kapitel_nr: IGS chapter code. Default 'k14' = accident/release measures. Others: 'k12' protective
             measures, 'k10' first aid, 'k6' physical-chemical data.
     """
     q = material_or_igs_nr.strip().lower()
     igs_nr = None
 
-    if q.isdigit() and len(q) == 6:
+    if q in IGS_NAMES:
         igs_nr = q
     else:
         for key in sorted(IGS_LOOKUP, key=len, reverse=True):
             if key in q:
                 igs_nr = IGS_LOOKUP[key]
                 break
+        if not igs_nr and any(alias in q for alias in FIRE_SMOKE_ALIASES):
+            igs_nr = FIRE_SMOKE_IGS_NR
 
     if not igs_nr:
         _log_audit("fetch_lanuk_stoffinfo", {"input": material_or_igs_nr}, "UNKNOWN_IGS_NR")
