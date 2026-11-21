@@ -3,6 +3,9 @@ data/
 _old/
 .adk/
 
+# Runtime output
+audit_log.jsonl
+
 # Secrets and local environment
 .env
 .venv/
