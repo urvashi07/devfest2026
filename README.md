@@ -73,6 +73,15 @@ adk run plume_scout   # terminal chat
 
 > Chlorine leak at the Münster Stadthafen, 51.9515, 7.6410. Where should the Messzug measure and stage?
 
+## Docs and demo
+
+| File | What it is |
+|---|---|
+| [`docs/PlumeScout.pdf`](docs/PlumeScout.pdf) | Presentation slides |
+| [`docs/presentation-script.md`](docs/presentation-script.md) | Talk track, live-demo steps, and how the measurement points are computed |
+| [`docs/plumescout_demo.mp4`](docs/plumescout_demo.mp4) | Recorded backup demo |
+| [`docs/record_demo.py`](docs/record_demo.py) | Script that re-records the demo video (needs `adk web` running) |
+
 ## Limitations
 
 - The substance lookup table and the sensitive-site list are small and Münster-specific; extend `IGS_LOOKUP` and `MUENSTER_SITES` in `tools.py` for other substances or areas.

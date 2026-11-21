@@ -11,7 +11,7 @@ Usage (from the repo root):
     .venv\\Scripts\\python.exe demo\\record_demo.py --prompt "Chlorine leak at 51.9515, 7.6410"
 
 A Chrome window opens for about 2 minutes while recording; don't click in it.
-Output: demo/plumescout_demo.mp4
+Output: docs/plumescout_demo.mp4
 """
 import argparse
 import re
