@@ -1,6 +1,6 @@
 # PlumeScout
 
-PlumeScout is a tactical decision-support agent for fire department measurement units (Feuerwehr Messzug / ABC-Erkunder) responding to hazardous-substance releases in Münster. It is built with the [Google Agent Development Kit (ADK)](https://google.github.io/adk-docs/) and Gemini.
+PlumeScout is a tactical decision-support agent for fire department measurement units (Feuerwehr Messzug / ABC-Erkunder) responding to hazardous-substance releases in Münster. It is built with the [Google Agent Development Kit (ADK)](https://google.github.io/adk-docs/) and Gemini. By [Urvashi](https://github.com/urvashi07) & [Daniel](https://github.com/danielhuesken)
 
 Given a substance and an incident location, PlumeScout:
 
